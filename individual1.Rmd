@@ -1,0 +1,184 @@
+---
+title: "individual1"
+output: html_document
+---
+
+Upload Packages.
+```{r}
+library(readxl)
+library(ggplot2)
+library(dplyr)
+library(magrittr)
+library(tidyr)
+```
+
+
+Part 1: Cleaning the Data
+```{r}
+
+df_def <- read_excel('cyclonesFootball2019.xlsx', sheet='Defensive')
+df_off <- read_excel('cyclonesFootball2019.xlsx', sheet='Offensive')
+df_bio <- read_excel('cyclonesFootball2019.xlsx', sheet='Biography')
+
+
+df_def$Name %<>% factor
+df_def$Opponent_Opponent %<>% factor
+newColumns = c('Tackles_Solo', 'Tackles_ASST',  'Tackles_TFL', 'Tackles_Sack',  'Turnover_FF',   'Turnover_FR', 'Turnover_INT', 'Pass_QBH','Pass_PB')
+df_def[, newColumns] %<>% lapply(function(x) as.numeric(as.character(x)))
+defClean= df_def
+
+
+
+df_off$Name %<>% factor
+df_off$Opponent_Opponent %<>% factor
+newColumns = c('Rushing_ATT', 'Rushing_YDS', 'Rushing_TD','Receiving_REC',  'Receiving_YDS','Receiving_TD', 'Passing_CMP-ATT', 'Passing_YDS', 'Passing_TD', 'Passing_INT')
+df_off[, newColumns] %<>% lapply(function(x) as.numeric(as.character(x)))
+offClean = df_off
+
+
+
+df_bio$Name %<>% factor
+df_bio$Position %<>% factor
+df_bio[["Height"]] <- gsub('-', '.', df_bio$Height) 
+newColumns = c('Weight', 'Height')
+df_bio[, newColumns] %<>% lapply(function(x) as.numeric(as.character(x)))
+bioClean = df_bio
+
+
+
+```
+
+
+Part 2: Tidying the Data
+```{r}
+# 1.)
+defClean_pivot_long <- defClean %>%
+  pivot_longer(Tackles_Solo:Pass_PB,names_to = "Statistic", values_to = "Number" )
+
+head(defClean_pivot_long)
+#defClean
+```
+2.)
+# By looking at all of the histograms of the various defensive statistics we can see that very few players have at least 1 Turnover_FF, Turnover_FR and Turnover_INT, thus making these the rarest defensive statistic. 
+```{r}
+ggplot(data = defClean_pivot_long, aes(x = Number)) +
+  facet_wrap(~Statistic) + geom_histogram()
+```
+
+Did ISU have better defense against West Virginia or Kansas State? Answer this question by creating a scatterplot with x-axis being the number of solo tackles (by each player) against West Virginia, and y-axis being that against Kansas State. A large number of solo tackles indicates good defense.
+
+### From the indication of a large amount of solo tackles, we can conclude from the scatter plot that ISU had better defense against Kansas State. As we can see majority of the points for the Y-axis are above two. But a majority of points for the x-axis are below two. Although these distinctions can be made, it is important to not that they are very close and may overlap in confidence intervals. This can also be interpreted as the West Virginia team having better offense. 
+
+```{r}
+df <- defClean_pivot_long
+
+# subset data frames by certain criteria and keep column values that are selected. 
+
+df_wv <- subset(df, ((Opponent_Opponent == "West Virginia") & (Statistic == "Tackles_Solo")) , select = c("Name", "Opponent_Opponent", "Number"))
+
+df_ks <- subset(df, ((Opponent_Opponent == "Kansas State") & (Statistic == "Tackles_Solo")) , select = c("Name", "Opponent_Opponent", "Number"))
+
+df_new <- subset(df, ((Opponent_Opponent == "West Virginia") & (Statistic == "Tackles_Solo")) | ((Opponent_Opponent == "Kansas State") & (Statistic == "Tackles_Solo")) , select = c("Name", "Opponent_Opponent", "Number"))
+
+# Cross references both datasets and keeps names that are in both sets. 
+
+keep <- intersect(df_wv$Name, df_ks$Name)
+
+# keep only names that are in the vector keep. 
+df_wv <- df_wv[df_wv$Name %in% keep, ]
+df_ks <- df_ks[df_ks$Name %in% keep, ]
+# Check if lengths are equal. 
+length(df_ks) == length(df_wv)
+
+
+# Plot WV in x, KS in y
+plot(df_wv$Number, df_ks$Number, main="Kansas State vs. West Virginia Solo Tackles",
+   xlab="West Virginia Solo Tackles ", ylab="Kansas State Solo Tackles ", pch=19)
+
+
+```
+
+### Part 3
+
+### 1.) Find where do the offensive players come from by joining the offensive data and player biography data appropriately.
+
+
+
+
+### 2.) Is there a relationship between the weight of a player and the receiving yards (Receiving_YDS)?
+
+### 3.) How do the performance of quarterback Brock Purdy relate to the performance of the ISU team?
+
+From the boxplots we made which compared the passing yards and passing TDs of Brock Purdy when the team won and lost, we can see that when we won, Brock Purdy was throwing more passing yards and touchdowns by comparing the medians and 1st and 3rd quartiles. This makes sense because if the quarterback, the players that has the ball for the longest time during the game, is playing well, then his team has a better chance of winning. Therefore, Brock Pudy's performance, has an impact on the performance of the ISU team. There is one outlier to notice when looking at the Passing TDs. In this we can see that Brock Purdy threw 5 touchdowns, but still loss. This is an exceptional game for the quarterback, but unfortunately, this means that the defensive end of the team most likely had a poor performance. 
+```{r}
+brock_p <- offClean
+brock_p <- subset(brock_p, (brock_p$Name == "Purdy, Brock"), select = c("Name","Opponent_Opponent",  "Passing_YDS", "Passing_TD", "Passing_INT"))
+
+
+
+# Record data: https://www.espn.com/college-football/player/gamelog/_/id/4361741/brock-purdy
+isu_record <- c("W","L","W","L","W","W","W","L","L","W","W","L","L") 
+
+#append record to df
+brock_p$Team_Record=isu_record
+ggplot(brock_p, aes(x=Team_Record, y=Passing_YDS)) + geom_boxplot() + labs(title = "Brock Purdy 2019", x = "Win or Lose", y = "Passing Yards")
+ggplot(brock_p, aes(x=Team_Record, y=Passing_TD)) + geom_boxplot() + labs(title = "Brock Purdy 2019", x = "Win or Lose", y = "Passing Touchdowns")
+```
+
+
+
+### 4.) Explore more. You may in addition explore the 2018 data here. Raise a question that can be answered only by looking at two or more data frames. Then answer that question.
+
+### When comparing Brock Purdy's 2018 and 2019 stats, were there any differences in how he performed, and how did these performances affect the performance of the team. 
+
+Since the schedule stays similar for the most part, I wanted to track his performance and the teams performance for similar teams across both years. 
+
+By looking at the records of the individual teams, we can see that in 2018 they had a slightly better season (5-2), compared to the 2019 season (4-3) with Brock Purdy playing. This can mean all sorts of things, mainly the team did not depend on Purdy his freshman season compared to a mature sophomore Purdy. They may also have had seniors that graduated in 2018 that made an impact to the team. 
+
+When looking at Purdy's stats himself vs. the wins and loses he accumulated in 2018 and 2019, we see that he is indeed an improved player with a lot of potential. Comparing the mean passing yards of lost games and won games, we see that in his games won he increased his passing yards from 266.8 to 333.25. This means that in the games that Purdy is winning, he is contributing more to the success by completing more passes and accumulating more yards. When looking at the boxplots of passing yards vs. wins and losses, we can see that Purdy has a large IQR for his wins in 2019 vs. 2018. This fluctuation in 2019 is most likely due to the increase in confidence to make harder passes while also maintaining to the composure to using the running game when needed. This can be contrasted to the passing yards of won games in 2018, where Purdy has a small IQR. This most likely means that Purdy's game limited to passing plays and less creativity. 
+
+Overall, Brock Purdy, is an extremely talented quarterback and has a very good upward trend. Although the record did get worse, we can expect that with a good recruiting class, he will have a tremendous junior season. 
+
+
+
+```{r}
+brock_p_2019 <- brock_p
+
+# create 2018 data set. 
+yds_2018 <- c(0, 318, 254, 250, 263, 230, 130, 337, 153, 315)
+td_2018 <- c(0, 4, 3, 2, 3, 1, 0, 2, 1, 0)
+int_2018 <- c(0, 1, 1, 0, 0, 0, 1, 2, 0, 2)
+opponent <- c("Akron", "Oklahoma", "West Virginia", "Texas Tech", "Kansas", "Baylor", "Texas", "Kansas State", "Drake", "Washington State")
+record_2018 <- c("W", "L", "W", "W", "W", "W", "L", "W", "W", "L")
+brock_p_2018 <- data.frame(opponent, yds_2018, td_2018, int_2018, record_2018)
+
+keep_2 <- intersect(brock_p_2018$opponent, brock_p_2019$Opponent_Opponent)
+
+# keep only names that are in the vector keep. 
+brock_p_2018 <- brock_p_2018[brock_p_2018$opponent %in% keep_2, ]
+brock_p_2019 <- brock_p_2019[brock_p_2019$Opponent_Opponent %in% keep_2, ]
+
+# These two data sets have the same teams. 
+isu_record_2018 <- c(sum(brock_p_2018$record_2018 == "W"), sum(brock_p_2018$record_2018 == "L"))
+isu_record_2019 <- c(sum(brock_p_2019$Team_Record == "W"), sum(brock_p_2019$Team_Record == "L"))
+isu_record_2018
+isu_record_2019
+
+ggplot(brock_p_2018, aes(x=record_2018, y=yds_2018)) + geom_boxplot() + labs(x = "Win or Lose", y = "Yards 2018")
+ggplot(brock_p_2018, aes(x=record_2018, y=td_2018)) + geom_boxplot() + labs(x = "Win or Lose", y = "Touchdowns 2018")
+
+yards_2018_w <- subset(brock_p_2018, (brock_p_2018$record_2018 == "W"), select = c("yds_2018"))
+yards_2018_l <- subset(brock_p_2018, (brock_p_2018$record_2018 == "L"), select = c("yds_2018"))
+print(mean(yards_2018_w$yds_2018))
+print(mean(yards_2018_l$yds_2018))
+
+yards_2019_w <- subset(brock_p_2019, (brock_p_2019$Team_Record == "W"), select = c("Passing_YDS"))
+yards_2019_l <- subset(brock_p_2019, (brock_p_2019$Team_Record == "L"), select = c("Passing_YDS"))
+
+print(mean(yards_2019_w$Passing_YDS))
+print(mean(yards_2019_l$Passing_YDS))
+```
+
+Song - V1
+
+
