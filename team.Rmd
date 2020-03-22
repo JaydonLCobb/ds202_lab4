@@ -2,6 +2,8 @@
 title: "team"
 output: html_document
 ---
+### Author: Anthony Song, GitHub: aasong113
+### Author: Jaydon Cobb, GitHub: JaydonLCobb
 
 Upload Packages.
 ```{r}
@@ -15,7 +17,7 @@ library(tidyr)
 
 Part 1: Cleaning the Data
 ```{r}
-
+# Load the data
 df_def <- read_excel('cyclonesFootball2019.xlsx', sheet='Defensive')
 df_off <- read_excel('cyclonesFootball2019.xlsx', sheet='Offensive')
 df_bio <- read_excel('cyclonesFootball2019.xlsx', sheet='Biography')
@@ -43,26 +45,26 @@ df_bio[["Height"]] <- gsub('-', '.', df_bio$Height)
 newColumns = c('Weight', 'Height')
 df_bio[, newColumns] %<>% lapply(function(x) as.numeric(as.character(x)))
 bioClean = df_bio
-
-
+head(defClean)
+head(offClean)
+head(bioClean)
 
 ```
 
 
-Part 2: Tidying the Data
+### Part 2: Tidying the Data(1)
+1.)
 ```{r}
 # 1.)
 defClean_pivot_long <- defClean %>%
   pivot_longer(Tackles_Solo:Pass_PB,names_to = "Statistic", values_to = "Number" )
 
-head(defClean_pivot_long)
-#defClean
 ```
 2.)
-# By looking at all of the histograms of the various defensive statistics we can see that very few players have at least 1 Turnover_FF, Turnover_FR and Turnover_INT, thus making these the rarest defensive statistic. 
+By looking at all of the histograms of the various defensive statistics we can see that very few players have at least 1 Turnover_FF, Turnover_FR and Turnover_INT, thus making these the rarest defensive statistic. 
 ```{r}
 ggplot(data = defClean_pivot_long, aes(x = Number)) +
-  facet_wrap(~Statistic) + geom_histogram()
+  facet_wrap(~Statistic) + geom_histogram() + stat_bin(bins = 10)
 ```
 
 Did ISU have better defense against West Virginia or Kansas State? Answer this question by creating a scatterplot with x-axis being the number of solo tackles (by each player) against West Virginia, and y-axis being that against Kansas State. A large number of solo tackles indicates good defense.
@@ -88,7 +90,7 @@ keep <- intersect(df_wv$Name, df_ks$Name)
 df_wv <- df_wv[df_wv$Name %in% keep, ]
 df_ks <- df_ks[df_ks$Name %in% keep, ]
 # Check if lengths are equal. 
-length(df_ks) == length(df_wv)
+#length(df_ks) == length(df_wv)
 
 
 # Plot WV in x, KS in y
@@ -98,7 +100,7 @@ plot(df_wv$Number, df_ks$Number, main="Kansas State vs. West Virginia Solo Tackl
 
 ```
 
-## Tidying Part (2)
+### Tidying (2)
 -------------------
 ## 2.1: Separate the Hometown column into two columns, namely the city and the state. Print the first few rows of these two columns. (Hint: look at the sep= argument of separate)
 ```{r}
@@ -115,17 +117,19 @@ bioCleanTidy %>%
 ```
 
 
-
 ### Part 3
 
 ### 1.) Find where do the offensive players come from by joining the offensive data and player biography data appropriately.
 ```{r}
-newDf<- bioCleanTidy
-bioCleanTidy %>% 
-count(Home_State, sort = TRUE)
+# Determine the Unique names from the offense. 
+unique_offense = unique(offClean$Name)
+
+# keep only names that are in the vector keep. 
+offensive_bio <- bioCleanTidy[bioCleanTidy$Name %in% unique_offense, ]
+offensive_bio <- subset(offensive_bio, select = c("Name","Home_City", "Home_State", "Highschool"))
+offensive_bio
+
 ```
-
-
 
 
 ### 2.) Is there a relationship between the weight of a player and the receiving yards (Receiving_YDS)?
@@ -215,7 +219,7 @@ yards_2019_l <- subset(brock_p_2019, (brock_p_2019$Team_Record == "L"), select =
 
 print(mean(yards_2019_w$Passing_YDS))
 print(mean(yards_2019_l$Passing_YDS))
+#song_check
 ```
-
 
 
